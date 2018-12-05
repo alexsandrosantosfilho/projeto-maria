@@ -13,20 +13,17 @@ import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 
 import br.senai.sc.edu.projetomaria.exception.DAOLayerException;
-import br.senai.sc.edu.projetomaria.model.Phase;
 import br.senai.sc.edu.projetomaria.model.Produto;
 import br.senai.sc.edu.projetomaria.resource.Messages;
 
 public class ProdutoDAO extends AbstractDAO {
 	private static final Logger LOGGER = LogManager.getLogger();
-	int total;
-	private String path;
 
 	public List<Produto> listarTodos() throws IOException {
 		ArrayList<Produto> listaProdutos = new ArrayList<Produto>();
-		try {
-			String sql = "select * from produto";
-			Statement stmt = getConnection().createStatement();
+		String sql = "select * from produto";
+		try (Connection conn = getConnection();
+				PreparedStatement stmt = conn.prepareStatement(sql);) {
 
 			ResultSet rs = stmt.executeQuery(sql);
 
@@ -71,31 +68,10 @@ public class ProdutoDAO extends AbstractDAO {
 		return p;
 	}
 
-	public List<Phase> exportarPhase() {
-		String sql = "SELECT * FROM SKU_PHASE;";
-
-		List<Phase> ph = new ArrayList<>();
-		try (Connection conn = getConnection();
-				Statement stmt = conn.prepareStatement(sql);
-				ResultSet rs = stmt.executeQuery(sql);) {
-
-			while (rs.next()) {
-				Phase phase = null;
-				phase = new Phase();
-				phase.setSkuNew(Integer.parseInt(rs.getString("SKU_PHASE_IN")));
-				phase.setSkuOld(Integer.parseInt(rs.getString("SKU_PHASE_OUT")));
-				ph.add(phase);
-			}
-		} catch (SQLException e) {
-			LOGGER.error(e);
-		}
-		return ph;
-	}
-
 	public void salvarProdutos(List<Produto> list) {
 		String sql = "";
 		int successes = 0;
-		total = 0;
+		int total = 0;
 
 		for (Produto p : list) {
 			sql = "INSERT INTO PRODUTO(" + "SKU," + "NOME_PRODUTO," + "ID_FAMILIA_COMERCIAL) VALUES (" + p.getSku()
@@ -106,6 +82,25 @@ public class ProdutoDAO extends AbstractDAO {
 				successes++;
 			} catch (SQLException e) {
 				LOGGER.error(e);
+			}
+			total++;
+		}
+		LOGGER.info(successes + " de " + total + " " + Messages.SUCCESS_PRODUTO);
+	}
+
+	public void updateProduto(List<Produto> skuIgual) {
+		String sql = "";
+		int successes = 0;
+		int total = 0;
+
+		for (Produto p : skuIgual) {
+			sql = "UPDATE produto SET NOME_PRODUTO = '" + p.getDescricao() + "', " + "ID_FAMILIA_COMERCIAL = "
+					+ p.getIdComercial() + " WHERE SKU = " + p.getSku() + ";";
+			try (Connection conn = getConnection(); PreparedStatement stmt = conn.prepareStatement(sql);) {
+				stmt.executeUpdate();
+				successes++;
+			} catch (SQLException e) {
+				LOGGER.debug(e);
 			}
 			total++;
 		}
@@ -142,44 +137,21 @@ public class ProdutoDAO extends AbstractDAO {
 		return resultados;
 	}
 
-	public int[] upsertSkuPhase(List<Phase> skuPhase) {
+	public void deleteProd(List<Produto> list) {
 		String sql = "";
 		int successes = 0;
-		int[] resultados = { 0, 0 };
-		total = 0;
-		for (Phase p : skuPhase) {
-			sql = "INSERT INTO sku_phase(" + "SKU_PHASE_IN," + "SKU_PHASE_OUT) VALUES (\" + p.getSkuNew() + \",\"\r\n"
-					+ "	+ p.getSkuOld() + \");\" " + "ON DUPLICATE KEY UPDATE SKU_PHASE_IN = ?, SKU_PHASE_OUT = ?";
+		int total = 0;
+
+		for (Produto p : list) {
+			sql = "DELETE FROM PRODUTO WHERE SKU = " + p.getSku() + ";";
 			try (Connection conn = getConnection(); PreparedStatement stmt = conn.prepareStatement(sql);) {
 				stmt.execute();
-				int retorno = stmt.executeUpdate(sql);
-				if (retorno == 1) {
-					resultados[1] += 1;
-					resultados[0] = resultados[0] + 1;
-				} else {
-					resultados[1] = resultados[1] + 1;
-				}
 				successes++;
 			} catch (SQLException e) {
-				if (e.getErrorCode() == 1062) {
-					LOGGER.info("registros duplicados. Retire-os e tente novamente. Mensagem SQL = " + e.getMessage());
-				}
-				if (e.getErrorCode() == 1) {
-					LOGGER.info("linha em branco. Ajuste e tente novamente. Mensagem SQL = " + e.getMessage());
-				}
-				if (e.getErrorCode() == 2) {
-					LOGGER.info("Coluna em branco. Ajuste e tente novamente. Mensagem SQL = " + e.getMessage());
-				} else {
-					LOGGER.info(
-							"Registro fora do Padrão. Retire-os e tente novamente. Mensagem SQL = " + e.getMessage());
-				}
 				LOGGER.debug(e);
-				throw new DAOLayerException(e);
 			}
 			total++;
 		}
 		LOGGER.info(successes + " de " + total + " " + Messages.SUCCESS_PRODUTO);
-		return resultados;
 	}
-
 }
