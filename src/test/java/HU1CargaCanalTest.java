@@ -1,4 +1,9 @@
-import static org.junit.jupiter.api.Assertions.fail;
+import static org.junit.jupiter.api.Assertions.assertEquals;
+
+import java.awt.List;
+import java.net.URISyntaxException;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 
 import java.net.URISyntaxException;
 import java.nio.file.Path;
