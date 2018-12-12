@@ -4,73 +4,48 @@ import java.awt.List;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
-
-import java.net.URISyntaxException;
-import java.nio.file.Path;
-import java.nio.file.Paths;
+import java.sql.Connection;
 import java.sql.SQLException;
+import java.sql.Statement;
+
+import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.Test;
 
-import org.junit.jupiter.api.BeforeAll;
 import br.senai.sc.edu.projetomaria.service.CargaService;
+import br.senai.sc.edu.projetomaria.service.ServiceResponse;
+import br.senai.sc.edu.projetomaria.service.ServiceResponse.STATUS;
 
-class HU1CargaCanalTest {
+public class HU1CargaCanalTest {
 	
-	static CargaService service = null;
-	
-	@BeforeAll
-	static void beforeAll() {
+	@Test
+	void testeInsert() {
 		ClassLoader classLoader = HU1CargaCanalTest.class.getClassLoader();
 		Path p = null;
 		try {
-		   p = Paths.get(classLoader.getResource("dataset/hu1-carga-canal-insert.csv").toURI());
+			p = Paths.get(classLoader.getResource("dataset/carga_canal.csv").toURI());
 		} catch (URISyntaxException e) {
 			e.printStackTrace();
 		}
+		CargaService service = null;
 		service = new CargaService();
-		try {
-			service.insertCanal(p);
-		} catch (SQLException e) {
-			e.printStackTrace();
-			fail("Importação deu falha!");
+		ServiceResponse s = service.cargaCanal(p);
+		assertEquals(s.getStatus(), STATUS.OK);
+		int[] response = (int[]) s.getResponse();
+		assertEquals(response[0], 4);
+		assertEquals(response[1], 0);
+		
+	}	
+	@AfterAll
+	static void limpandoDB() {
+		Database bd = new Database();
+
+		String sqlcanal = "delete from canal";
+
+		try (Connection conn = bd.getDatabaseConnection(); Statement pl = conn.createStatement();) {
+			pl.executeUpdate(sqlcanal);
+		} catch (SQLException ex) {
+			System.err.print(ex.getMessage());
 		}
-	}
-	
-	// HU1 - UPDATE (BDD 2)
-	@Test
-	void updateCanal() {
-		ClassLoader classLoader = getClass().getClassLoader();
-		Path p = null;
-		try {
-			p = Paths.get(classLoader.getResource("dataset/hu1-bdd2-carga-canal-update.csv").toURI());
-		} catch (URISyntaxException e) {
-			e.printStackTrace();
-		}
-		try {
-			service.updateCanal(p);
-		} catch (SQLException e) {
-			e.printStackTrace();
-			fail("Update deu ruim!");
-		}
-	}
-	
-	// HU1 - DELETE (BDD 3)
-	@Test
-	void deleteCanal() {
-		ClassLoader classLoader = getClass().getClassLoader();
-		Path p = null;
-		try {
-			p = Paths.get(classLoader.getResource("dataset/hu1-bdd2-carga-canal-delete.csv").toURI());
-		} catch (URISyntaxException e) {
-			e.printStackTrace();
-		}
-		try {
-			service.deleteCanal(p);
-		} catch (SQLException e) {
-			e.printStackTrace();
-			fail("Deletar deu ruim!");
-		}
-	}
-	
-	
+
+ }	
 }
