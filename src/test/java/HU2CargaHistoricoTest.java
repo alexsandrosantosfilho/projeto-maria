@@ -1,162 +1,85 @@
-import static org.junit.jupiter.api.Assertions.assertThrows;
-
+import static org.junit.jupiter.api.Assertions.assertEquals;
 import java.net.URISyntaxException;
 import java.nio.file.Path;
 import java.nio.file.Paths;
+import java.sql.Connection;
 import java.sql.SQLException;
+import java.sql.Statement;
+
 
 import org.junit.jupiter.api.AfterAll;
 import org.junit.jupiter.api.BeforeAll;
 import org.junit.jupiter.api.Test;
 
 import br.senai.sc.edu.projetomaria.service.CargaService;
+import br.senai.sc.edu.projetomaria.service.ServiceResponse;
+import br.senai.sc.edu.projetomaria.service.ServiceResponse.STATUS;
 
 class HU2CargaHistoricoTest {
 	
 	static CargaService service = null;
 	
-	static ClassLoader classLoader = HU2CargaHistoricoTest.class.getClassLoader();
-	
 	@BeforeAll
-	static void before() {
+	
+	static void beforeAll() {
+		ClassLoader classLoader = HU2CargaHistoricoTest.class.getClassLoader();		
+		Path q = null;
+		Path r = null;
 		
-		service = new CargaService();
+		try {
+			q = Paths.get(classLoader.getResource("dataset/carga_canal.csv").toURI());
+			r = Paths.get(classLoader.getResource("dataset/carga_produto.csv").toURI());
+		} catch (URISyntaxException e) {
+			e.printStackTrace();
+		}
+		service = new CargaService();	
 		
-		Path c = null;
-		Path f = null;
+		service.cargaCanal(q);
+		service.cargaProduto(r);		
+	}
+	
+	
+	@Test
+	void upsert() {
+		ClassLoader classLoader = HU2CargaHistoricoTest.class.getClassLoader();
 		Path p = null;
 		
-		
 		try {
-			c = Paths.get(classLoader.getResource("dataset/carga_canal_insert_vitorhu2.csv").toURI());
-		} catch (URISyntaxException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		try {
-			service.insertCanal(c);
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
-		try {
-			f = Paths.get(classLoader.getResource("dataset/carga_familia_insert_vitorhu2.csv").toURI());
-		} catch (URISyntaxException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		try {
-			service.insertFamilia(f);
-		} catch (SQLException e) {
-			// TODO Auto-generated catch block
-			e.printStackTrace();
-		}
-		
-		try {
-			p = Paths.get(classLoader.getResource("dataset/carga_produto_insert_vitorhu2.csv").toURI());
+			p = Paths.get(classLoader.getResource("dataset/carga_historico.csv").toURI());			
 		} catch (URISyntaxException e) {
 			e.printStackTrace();
 		}
-		service.insertProduto(p);
+		service = new CargaService();
+		service.cargaHistorico(p);
+		ServiceResponse s = service.cargaHistorico(p);
+		assertEquals(s.getStatus(), STATUS.OK);
+		int[] response = (int[]) s.getResponse();
+		assertEquals(response[0], 4);
+		assertEquals(response[1], 0);
+		
+		ServiceResponse x = service.cargaHistorico(p);
+		assertEquals(x.getStatus(), STATUS.OK);
+		int[] response1 = (int[]) x.getResponse();
+		assertEquals(response1[0], 0);
+		assertEquals(response1[1], 4);
 	}
 	
-	@Test
-	void testBDD3Sucesso(){
-		
-		System.out.println("------------------TESTE BDD3 SUCESSO------------------");
-		
-		service = new CargaService();
-		
-		Path insert = null;
-		try {
-			insert = Paths.get(classLoader.getResource("dataset/carga_historico_insert_vitorhu2.csv").toURI());
-		} catch (URISyntaxException e) {
-			e.printStackTrace();
-		}
-		service.insertHistorico(insert);
-		
-		
-		Path delete = null;
-		try {
-			delete = Paths.get(classLoader.getResource("dataset/carga_historico_delete_vitorhu2.csv").toURI());
-		} catch (URISyntaxException e) {
-			e.printStackTrace();
-		}
-		service.deleteHistorico(delete); 
-		
-		System.out.println("------------------TESTE BDD3 SUCESSO------------------");
+	@AfterAll	
+	static void limparTeste() {
+						
+		Database bd = new Database();
+		String sqlCanal = "delete from canal";		
+		String sqlProduto = "delete from produto";
+		String sqlHistorico = "delete from historico";
+				
+		try (Connection conn = bd.getDatabaseConnection();
+			Statement ps = conn.createStatement();) 	{
+			ps.executeUpdate(sqlCanal);
+			ps.executeUpdate(sqlProduto);
+			ps.executeUpdate(sqlHistorico);
+						
+		} catch (SQLException ex) {
+			System.err.println(ex.getMessage());
+		}	
 	}
-	
-	@Test
-	void testBDD3Erro1(){
-		
-		System.out.println("------------------TESTE BDD 3 ERRO1------------------");
-		
-		service = new CargaService();
-		
-		Path insert = null;
-		try {
-			insert = Paths.get(classLoader.getResource("dataset/carga_historico_insert_idrepetido.csv").toURI());
-		} catch (URISyntaxException e) {
-			e.printStackTrace();
-		}
-		service.insertHistorico(insert);
-		
-		assertThrows(SQLException.class, () -> {
-			Path delete = null;
-			try {
-				delete = Paths.get(classLoader.getResource("dataset/carga_historico_delete_idrepetido.csv").toURI());
-			} catch (URISyntaxException e) {
-				e.printStackTrace();
-			}
-			service.deleteHistorico(delete);
-			System.out.println("------------------TESTE BDD3 ERRO1------------------");
-		});
-	}
-	
-	@Test
-	void testBDD3Erro2(){
-		
-		System.out.println("------------------TESTE BDD3 ERRO2------------------");
-		
-		service = new CargaService();
-		
-		Path insert = null;
-		try {
-			insert = Paths.get(classLoader.getResource("dataset/carga_historico_insert_nada.csv").toURI());
-		} catch (URISyntaxException e) {
-			e.printStackTrace();
-		}
-		service.insertHistorico(insert);
-		
-		assertThrows(SQLException.class, () -> {
-			Path delete = null;
-			try {
-				delete = Paths.get(classLoader.getResource("dataset/carga_historico_delete_vitorhu2.csv").toURI());
-			} catch (URISyntaxException e) {
-				e.printStackTrace();
-			}
-			service.deleteHistorico(delete);
-			System.out.println("------------------TESTE BDD3 ERRO2------------------");
-		});
-	}
-
-	@Test
-	void testBDD9Sucesso() {
-		
-		System.out.println("------------------TESTE BDD9 SUCESSO------------------");
-		
-		service = new CargaService();
-		
-		Path insert = null;
-		try {
-			insert = Paths.get(classLoader.getResource("dataset/carga_historico_insert_branco.csv").toURI());
-		} catch (URISyntaxException e) {
-			e.printStackTrace();
-		}
-		service.insertHistorico(insert);
-		System.out.println("------------------TESTE BDD9 SUCESSO------------------");
-	
-	}
-}
+}	
